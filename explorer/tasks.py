@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta
+from io import BytesIO
 import random
 import string
 
@@ -24,20 +25,21 @@ else:
 @task
 def execute_query(query_id, email_address):
     q = Query.objects.get(pk=query_id)
-    send_mail('[SQL Explorer] Your query is running...',
-              '%s is running and should be in your inbox soon!' % q.title,
+    send_mail('[SQL Explorer] Sua consulta está rodando...',
+              '%s Está rodando e estará em sua caixa de entrada em breve!' % q.title,
               app_settings.FROM_EMAIL,
               [email_address])
 
     exporter = get_exporter_class('csv')(q)
-    random_part = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(20))
     try:
-        url = s3_upload('%s.csv' % random_part, exporter.get_file_output())
+        output_file = exporter.get_file_output()
+        output_file.seek(0)
+        url = s3_upload('%s.csv' % q.title.replace(' ','_'), BytesIO(output_file.read().encode('utf-8')))
         subj = '[SQL Explorer] Report "%s" is ready' % q.title
         msg = 'Download results:\n\r%s' % url
     except DatabaseError as e:
-        subj = '[SQL Explorer] Error running report %s' % q.title
-        msg = 'Error: %s\nPlease contact an administrator' %  e
+        subj = '[SQL Explorer] Erro ao gerar relatorio %s' % q.title
+        msg = 'Erro: %s\n Entre em contato com um administrator' %  e
         logger.warning('%s: %s' % (subj, e))
     send_mail(subj, msg, app_settings.FROM_EMAIL, [email_address])
 
