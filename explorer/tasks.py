@@ -26,7 +26,7 @@ else:
 def execute_query(query_id, email_address):
     q = Query.objects.get(pk=query_id)
     send_mail('[SQL Explorer] Sua consulta está rodando...',
-              '%s Está rodando e estará em sua caixa de entrada em breve!' % q.title,
+              '%s está rodando e estará em sua caixa de entrada em breve!' % q.title,
               app_settings.FROM_EMAIL,
               [email_address])
 
