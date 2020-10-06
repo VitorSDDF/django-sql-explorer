@@ -1,13 +1,11 @@
 from datetime import date, datetime, timedelta
 from io import BytesIO
 
-import random
-import string
-
 from django.core.mail import send_mail
 from django.core.cache import cache
 from django.db import DatabaseError
 from django.template.loader import get_template
+from django.core.mail import EmailMessage
 
 from explorer import app_settings
 from explorer.exporters import get_exporter_class
@@ -40,10 +38,14 @@ def execute_query(query_id, email_address):
     else:
         email_content = '%s está rodando e estará em sua caixa de entrada em breve!' % q.title
 
-    send_mail('[SQL Explorer] Sua consulta está rodando...',
-              email_content,
-              app_settings.FROM_EMAIL,
-              [email_address])
+    email = EmailMessage(
+        '[SQL Explorer] Sua consulta está rodando...',
+        email_content,
+        app_settings.FROM_EMAIL,
+        [email_address]
+    )
+    email.content_subtype = "html"  # O conteúdo principal agora está em text/html
+    email.send()
     exporter = get_exporter_class('csv')(q)
     try:
         output_file = exporter.get_file_output()
@@ -55,13 +57,13 @@ def execute_query(query_id, email_address):
                 app_settings.EMAIL_BASE_TEMPLATE
             ).render(
                 {
-                    'title': '[SQL Explorer] Report "%s" is ready' % q.title,
-                    'main_content': 'Download results:\n\r%s' % url
+                    'title': '[SQL Explorer] Relatório "%s" está pronto' % q.title,
+                    'main_content': 'Baixe os resultados:\n\r%s' % url
                 }
             )
         else:
             email_content = 'Download results:\n\r%s' % url
-        subj = '[SQL Explorer] Report "%s" is ready' % q.title
+        subj = '[SQL Explorer] Relatório "%s" está pronto' % q.title
 
     except DatabaseError as e:
         if app_settings.EMAIL_BASE_TEMPLATE:
@@ -78,7 +80,9 @@ def execute_query(query_id, email_address):
         subj = '[SQL Explorer] Erro ao gerar relatorio %s' % q.title
 
         logger.warning('%s: %s' % (subj, e))
-    send_mail(subj, email_content, app_settings.FROM_EMAIL, [email_address])
+    email = EmailMessage(subj, email_content, app_settings.FROM_EMAIL, [email_address])
+    email.content_subtype = "html"  # O conteúdo principal agora está em text/html
+    email.send()
 
 
 @task
