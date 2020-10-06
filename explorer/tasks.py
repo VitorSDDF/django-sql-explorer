@@ -1,11 +1,13 @@
 from datetime import date, datetime, timedelta
 from io import BytesIO
+
 import random
 import string
 
 from django.core.mail import send_mail
 from django.core.cache import cache
 from django.db import DatabaseError
+from django.template.loader import get_template
 
 from explorer import app_settings
 from explorer.exporters import get_exporter_class
@@ -25,23 +27,58 @@ else:
 @task
 def execute_query(query_id, email_address):
     q = Query.objects.get(pk=query_id)
+
+    if app_settings.BASE_TEMPLATE:
+        email_content = get_template(
+            app_settings.BASE_TEMPLATE
+        ).render(
+            {
+                'title': '[SQL Explorer] Sua consulta está rodando...',
+                'main_content': '%s está rodando e estará em sua caixa de entrada em breve!' % q.title
+            }
+        )
+    else:
+        email_content = '%s está rodando e estará em sua caixa de entrada em breve!' % q.title
+
     send_mail('[SQL Explorer] Sua consulta está rodando...',
-              '%s está rodando e estará em sua caixa de entrada em breve!' % q.title,
+              email_content,
               app_settings.FROM_EMAIL,
               [email_address])
-
     exporter = get_exporter_class('csv')(q)
     try:
         output_file = exporter.get_file_output()
         output_file.seek(0)
-        url = s3_upload('%s.csv' % q.title.replace(' ','_'), BytesIO(output_file.read().encode('utf-8')))
+        url = s3_upload('%s.csv' % q.title.replace(' ', '_'), BytesIO(output_file.read().encode('utf-8')))
+
+        if app_settings.BASE_TEMPLATE:
+            email_content = get_template(
+                app_settings.BASE_TEMPLATE
+            ).render(
+                {
+                    'title': '[SQL Explorer] Report "%s" is ready' % q.title,
+                    'main_content': 'Download results:\n\r%s' % url
+                }
+            )
+        else:
+            email_content = 'Download results:\n\r%s' % url
         subj = '[SQL Explorer] Report "%s" is ready' % q.title
-        msg = 'Download results:\n\r%s' % url
+
     except DatabaseError as e:
+        if app_settings.BASE_TEMPLATE:
+            email_content = get_template(
+                app_settings.BASE_TEMPLATE
+            ).render(
+                {
+                    'title': '[SQL Explorer] Erro ao gerar relatorio %s' % q.title,
+                    'main_content': 'Erro: %s\n Entre em contato com um administrator' % e
+                }
+            )
+        else:
+            email_content = 'Erro: %s\n Entre em contato com um administrator' % e
         subj = '[SQL Explorer] Erro ao gerar relatorio %s' % q.title
-        msg = 'Erro: %s\n Entre em contato com um administrator' %  e
+
         logger.warning('%s: %s' % (subj, e))
-    send_mail(subj, msg, app_settings.FROM_EMAIL, [email_address])
+    send_mail(subj, email_content, app_settings.FROM_EMAIL, [email_address])
 
 
 @task
