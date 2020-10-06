@@ -62,7 +62,7 @@ def execute_query(query_id, email_address):
                 }
             )
         else:
-            email_content = 'Download results:\n\r%s' % url
+            email_content = 'Baixe os resultados:\n\r%s' % url
         subj = '[SQL Explorer] Relatório "%s" está pronto' % q.title
 
     except DatabaseError as e:
