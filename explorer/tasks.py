@@ -28,9 +28,9 @@ else:
 def execute_query(query_id, email_address):
     q = Query.objects.get(pk=query_id)
 
-    if app_settings.BASE_TEMPLATE:
+    if app_settings.EMAIL_BASE_TEMPLATE:
         email_content = get_template(
-            app_settings.BASE_TEMPLATE
+            app_settings.EMAIL_BASE_TEMPLATE
         ).render(
             {
                 'title': '[SQL Explorer] Sua consulta está rodando...',
@@ -50,9 +50,9 @@ def execute_query(query_id, email_address):
         output_file.seek(0)
         url = s3_upload('%s.csv' % q.title.replace(' ', '_'), BytesIO(output_file.read().encode('utf-8')))
 
-        if app_settings.BASE_TEMPLATE:
+        if app_settings.EMAIL_BASE_TEMPLATE:
             email_content = get_template(
-                app_settings.BASE_TEMPLATE
+                app_settings.EMAIL_BASE_TEMPLATE
             ).render(
                 {
                     'title': '[SQL Explorer] Report "%s" is ready' % q.title,
@@ -64,9 +64,9 @@ def execute_query(query_id, email_address):
         subj = '[SQL Explorer] Report "%s" is ready' % q.title
 
     except DatabaseError as e:
-        if app_settings.BASE_TEMPLATE:
+        if app_settings.EMAIL_BASE_TEMPLATE:
             email_content = get_template(
-                app_settings.BASE_TEMPLATE
+                app_settings.EMAIL_BASE_TEMPLATE
             ).render(
                 {
                     'title': '[SQL Explorer] Erro ao gerar relatorio %s' % q.title,
