@@ -49,7 +49,7 @@ def execute_query(query_id, email_address):
     try:
         output_file = exporter.get_file_output()
         output_file.seek(0)
-        url = s3_upload('%s.csv' % q.title.replace(' ', '_'), BytesIO(output_file.read().encode('iso-8859-1', 'ignore').decode('utf-8', 'replace')))
+        url = s3_upload('%s.csv' % q.title.replace(' ', '_'), BytesIO(output_file.read().encode('iso-8859-1', 'ignore')))
 
         if app_settings.EMAIL_BASE_TEMPLATE:
             email_content = get_template(
